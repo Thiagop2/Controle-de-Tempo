@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Controle de Tempo</title>
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+--bg:#f6f7f9;--card:#fff;--tx:#1b1f24;--mut:#6b7380;--bd:#e3e6ea;--ac:#2563eb;--ac2:#dc2626;--bar:#93b4f5}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#14171b;--card:#1d2127;--tx:#e8eaed;--mut:#98a1ad;--bd:#2d333b;--ac:#5b8cf0;--ac2:#f0605d;--bar:#3a5a9c}}
+:root[data-theme="dark"]{--bg:#14171b;--card:#1d2127;--tx:#e8eaed;--mut:#98a1ad;--bd:#2d333b;--ac:#5b8cf0;--ac2:#f0605d;--bar:#3a5a9c}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:860px;margin:0 auto;padding:16px;display:grid;gap:14px}
+h1{font-size:20px;margin:0}
+h2{font-size:14px;margin:0 0 10px;color:var(--mut);font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:16px}
+.timer{text-align:center}
+.clock{font-size:clamp(40px,12vw,64px);font-variant-numeric:tabular-nums;font-weight:600;margin:6px 0 12px}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+input,select,button{font:inherit;color:var(--tx)}
+input[type=text]{flex:1;min-width:180px;padding:10px 12px;border:1px solid var(--bd);border-radius:8px;background:var(--bg)}
+button{padding:10px 16px;border:1px solid var(--bd);border-radius:8px;background:var(--card);cursor:pointer}
+button.main{background:var(--ac);border-color:var(--ac);color:#fff;font-weight:600;min-width:110px}
+button.main.stop{background:var(--ac2);border-color:var(--ac2)}
+button.ghost{padding:4px 8px;color:var(--mut)}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
+.kpi{background:var(--bg);border-radius:10px;padding:10px 12px}
+.kpi b{display:block;font-size:20px;font-variant-numeric:tabular-nums}
+.kpi span{color:var(--mut);font-size:12px}
+.bars{display:grid;gap:6px}
+.bar{display:grid;grid-template-columns:minmax(80px,28%) 1fr auto;gap:8px;align-items:center;font-size:13px}
+.bar i{display:block;height:14px;border-radius:4px;background:var(--bar)}
+.bar em{font-style:normal;color:var(--mut);font-variant-numeric:tabular-nums}
+.days{display:flex;align-items:flex-end;gap:6px;height:110px}
+.days div{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;height:100%;font-size:11px;color:var(--mut)}
+.days i{display:block;width:100%;background:var(--bar);border-radius:4px 4px 0 0;min-height:2px}
+.scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--bd);white-space:nowrap}
+th{color:var(--mut);font-weight:600}
+.head{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.empty{color:var(--mut);text-align:center;padding:14px}
+.tabs button.on{background:var(--ac);color:#fff;border-color:var(--ac)}
+#msg{font-size:13px;color:var(--mut);min-height:18px}
+</style>
+</head>
+<body>
+<main>
+  <div class="head"><h1>⏱️ Controle de Tempo</h1><div id="msg"></div></div>
+
+  <section class="card timer">
+    <div class="clock" id="clock">00:00:00</div>
+    <div class="row" style="justify-content:center">
+      <input type="text" id="act" list="acts" placeholder="O que você vai fazer?" autocomplete="off">
+      <datalist id="acts"></datalist>
+      <button class="main" id="btn">Iniciar</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="head" style="margin-bottom:10px">
+      <h2 style="margin:0">Indicadores</h2>
+      <div class="row tabs" id="tabs">
+        <button data-p="1">Hoje</button><button data-p="7" class="on">7 dias</button><button data-p="30">30 dias</button><button data-p="0">Tudo</button>
+      </div>
+    </div>
+    <div class="kpis" id="kpis"></div>
+    <h2 style="margin-top:16px">Tempo por atividade</h2>
+    <div class="bars" id="bars"></div>
+    <h2 style="margin-top:16px">Últimos 7 dias</h2>
+    <div class="days" id="days"></div>
+  </section>
+
+  <section class="card">
+    <div class="head" style="margin-bottom:10px">
+      <h2 style="margin:0">Registros</h2>
+      <div class="row">
+        <button id="link">📎 Vincular arquivo CSV</button>
+        <button id="exp">Exportar cópia</button>
+      </div>
+    </div>
+    <div id="fstat" class="empty" style="padding:0 0 10px;text-align:left"></div>
+    <div class="scroll"><table>
+      <thead><tr><th>Atividade</th><th>Data</th><th>Início</th><th>Fim</th><th>Duração</th><th></th></tr></thead>
+      <tbody id="log"></tbody>
+    </table></div>
+  </section>
+</main>
+
+<script>
+const KEY_LOG='ct:log', KEY_RUN='ct:run';
+let log=[], run=null, period=7, tick=null;
+const $=id=>document.getElementById(id);
+
+function load(){
+  try{log=JSON.parse(localStorage.getItem(KEY_LOG)||'[]')}catch(e){log=[]}
+  try{run=JSON.parse(localStorage.getItem(KEY_RUN)||'null')}catch(e){run=null}
+}
+function save(){
+  try{localStorage.setItem(KEY_LOG,JSON.stringify(log));
+      localStorage.setItem(KEY_RUN,JSON.stringify(run))}
+  catch(e){say('Não foi possível salvar neste navegador.')}
+}
+function say(t){$('msg').textContent=t;setTimeout(()=>{if($('msg').textContent===t)$('msg').textContent=''},4000)}
+
+const pad=n=>String(n).padStart(2,'0');
+const hms=s=>{s=Math.max(0,Math.round(s));return pad(Math.floor(s/3600))+':'+pad(Math.floor(s%3600/60))+':'+pad(s%60)};
+const short=s=>{s=Math.round(s);const h=Math.floor(s/3600),m=Math.floor(s%3600/60);return h?h+'h '+pad(m)+'min':m?m+'min':s+'s'};
+const dstr=d=>pad(d.getDate())+'/'+pad(d.getMonth()+1)+'/'+d.getFullYear();
+const tstr=d=>pad(d.getHours())+':'+pad(d.getMinutes())+':'+pad(d.getSeconds());
+const dayKey=d=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+
+function toggle(){
+  if(run){
+    const end=Date.now();
+    log.push({id:end,act:run.act,start:run.start,end:end});
+    run=null;save();
+    if(fh)syncFile();else say('Registro salvo.');
+  }else{
+    const act=$('act').value.trim();
+    if(!act){$('act').focus();say('Digite o nome da atividade.');return}
+    run={act:act,start:Date.now()};save();
+  }
+  render();
+}
+
+function render(){
+  const btn=$('btn');
+  btn.textContent=run?'Parar':'Iniciar';
+  btn.classList.toggle('stop',!!run);
+  $('act').disabled=!!run;
+  if(run)$('act').value=run.act;
+  else if(!$('act').value)$('act').value='';
+  clearInterval(tick);
+  updClock();
+  if(run)tick=setInterval(updClock,500);
+  document.title=run?'⏱ '+hms((Date.now()-run.start)/1000)+' · '+run.act:'Controle de Tempo';
+
+  $('acts').innerHTML=[...new Set(log.map(l=>l.act))].map(a=>'<option value="'+esc(a)+'">').join('');
+  renderStats();renderLog();
+}
+function updClock(){
+  const s=run?(Date.now()-run.start)/1000:0;
+  $('clock').textContent=hms(s);
+  if(run)document.title='⏱ '+hms(s)+' · '+run.act;
+}
+function esc(s){return s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+
+function filtered(){
+  if(!period)return log;
+  const from=new Date();from.setHours(0,0,0,0);from.setDate(from.getDate()-(period-1));
+  return log.filter(l=>l.start>=from.getTime());
+}
+function renderStats(){
+  const f=filtered(),dur=l=>(l.end-l.start)/1000;
+  const tot=f.reduce((a,l)=>a+dur(l),0);
+  const byAct={};f.forEach(l=>byAct[l.act]=(byAct[l.act]||0)+dur(l));
+  const top=Object.entries(byAct).sort((a,b)=>b[1]-a[1]);
+  const daysSet=new Set(f.map(l=>dayKey(new Date(l.start))));
+  $('kpis').innerHTML=[
+    ['Tempo total',short(tot)],
+    ['Registros',f.length],
+    ['Média por registro',f.length?short(tot/f.length):'—'],
+    ['Média por dia ativo',daysSet.size?short(tot/daysSet.size):'—'],
+    ['Mais tempo em',top.length?esc(top[0][0]):'—']
+  ].map(k=>'<div class="kpi"><b>'+k[1]+'</b><span>'+k[0]+'</span></div>').join('');
+
+  const max=top.length?top[0][1]:1;
+  $('bars').innerHTML=top.length?top.map(([a,s])=>
+    '<div class="bar"><span title="'+esc(a)+'">'+esc(a)+'</span><div><i style="width:'+(s/max*100)+'%"></i></div><em>'+short(s)+' · '+Math.round(s/tot*100)+'%</em></div>'
+  ).join(''):'<div class="empty">Sem dados no período.</div>';
+
+  const days=[];
+  for(let i=6;i>=0;i--){const d=new Date();d.setHours(0,0,0,0);d.setDate(d.getDate()-i);days.push(d)}
+  const sums=days.map(d=>{const k=dayKey(d);return log.filter(l=>dayKey(new Date(l.start))===k).reduce((a,l)=>a+dur(l),0)});
+  const m=Math.max(...sums,1);
+  $('days').innerHTML=days.map((d,i)=>
+    '<div title="'+dstr(d)+': '+short(sums[i])+'"><span>'+(sums[i]?short(sums[i]):'')+'</span><i style="height:'+(sums[i]/m*80)+'%"></i><span>'+pad(d.getDate())+'/'+pad(d.getMonth()+1)+'</span></div>'
+  ).join('');
+}
+function renderLog(){
+  const rows=[...log].reverse().slice(0,200);
+  $('log').innerHTML=rows.length?rows.map(l=>{
+    const s=new Date(l.start),e=new Date(l.end);
+    return '<tr><td>'+esc(l.act)+'</td><td>'+dstr(s)+'</td><td>'+tstr(s)+'</td><td>'+tstr(e)+'</td><td>'+hms((l.end-l.start)/1000)+'</td><td><button class="ghost" data-del="'+l.id+'" title="Excluir">✕</button></td></tr>';
+  }).join(''):'<tr><td colspan="6" class="empty">Nenhum registro ainda. Digite uma atividade e clique em Iniciar.</td></tr>';
+}
+
+async function exportCsv(){
+  if(!log.length){say('Nada para exportar.');return}
+  const q=v=>'"'+String(v).replace(/"/g,'""')+'"';
+  const lines=[['Atividade','Data','Início','Fim','Duração (hh:mm:ss)','Duração (minutos)']];
+  log.forEach(l=>{
+    const s=new Date(l.start),e=new Date(l.end),sec=(l.end-l.start)/1000;
+    lines.push([l.act,dstr(s),tstr(s),tstr(e),hms(sec),(sec/60).toFixed(2).replace('.',',')]);
+  });
+  const csv='\ufeff'+lines.map(r=>r.map(q).join(';')).join('\r\n');
+  const name='Dados_Controle de Tempo.csv';
+  try{
+    const dl=await claude.use('downloads');
+    if(dl){await dl.save({filename:name,data:csv});say('Planilha salva.');return}
+  }catch(e){if(e&&e.code==='declined')return}
+  try{
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
+    a.download=name;document.body.appendChild(a);a.click();a.remove();
+    say('Planilha gerada.');
+  }catch(e){say('Não foi possível exportar.')}
+}
+
+/* ---------- Arquivo CSV vinculado (Chrome/Edge) ---------- */
+const CSV_NAME='Dados_Controle de Tempo.csv';
+let fh=null;
+let FS=false;
+try{FS='showSaveFilePicker' in window && window.top===window.self}catch(e){}
+const HEAD=['Atividade','Data','Início','Fim','Duração (hh:mm:ss)','Duração (minutos)'];
+const qt=v=>'"'+String(v).replace(/"/g,'""')+'"';
+function rowOf(l){
+  const s=new Date(l.start),e=new Date(l.end),sec=(l.end-l.start)/1000;
+  return [l.act,dstr(s),tstr(s),tstr(e),hms(sec),(sec/60).toFixed(2).replace('.',',')].map(qt).join(';')+'\r\n';
+}
+const idb=()=>new Promise((res,rej)=>{const r=indexedDB.open('ct',1);r.onupgradeneeded=()=>r.result.createObjectStore('h');r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)});
+async function hPut(h){const d=await idb();return new Promise((res,rej)=>{const t=d.transaction('h','readwrite');t.objectStore('h').put(h,'file');t.oncomplete=res;t.onerror=()=>rej(t.error)})}
+async function hGet(){const d=await idb();return new Promise((res,rej)=>{const r=d.transaction('h').objectStore('h').get('file');r.onsuccess=()=>res(r.result||null);r.onerror=()=>rej(r.error)})}
+function updFile(){
+  const n=log.filter(l=>!l.synced).length;
+  $('fstat').textContent=fh?('📎 Gravando em: '+fh.name+(n?' · '+n+' registro(s) ainda não gravado(s)':' · tudo gravado')):
+    (FS?'Nenhum arquivo vinculado. Clique em “Vincular arquivo CSV” para gravar automaticamente.':'Gravação automática indisponível aqui: abra este arquivo no Chrome ou Edge. Use “Exportar cópia”.');
+}
+async function linkFile(){
+  try{
+    fh=await showSaveFilePicker({suggestedName:CSV_NAME,startIn:'documents',types:[{description:'Planilha CSV',accept:{'text/csv':['.csv']}}]});
+    try{await hPut(fh)}catch(e){}
+    await syncFile();
+    if(fh.name!==CSV_NAME)say('Arquivo vinculado com outro nome: '+fh.name);
+  }catch(e){if(e&&e.name!=='AbortError')say('Não foi possível vincular o arquivo.')}
+  updFile();
+}
+async function syncFile(){
+  if(!fh)return;
+  try{
+    let p=await fh.queryPermission({mode:'readwrite'});
+    if(p!=='granted')p=await fh.requestPermission({mode:'readwrite'});
+    if(p!=='granted'){say('Permissão negada para gravar no arquivo.');updFile();return}
+    const pend=log.filter(l=>!l.synced);
+    const file=await fh.getFile();
+    let text=file.size===0?'\ufeff'+HEAD.map(qt).join(';')+'\r\n':'';
+    text+=pend.map(rowOf).join('');
+    if(text){
+      const w=await fh.createWritable({keepExistingData:true});
+      await w.seek(file.size);
+      await w.write(text);
+      await w.close();
+    }
+    pend.forEach(l=>l.synced=true);save();
+    say(pend.length?'Registro gravado no CSV.':'Arquivo vinculado.');
+  }catch(e){say('Não consegui gravar no CSV (está aberto no Excel?). Feche e tente de novo.')}
+  updFile();
+}
+
+async function removeFromFile(l){
+  // retorna true se pode apagar do app (linha removida ou não encontrada); false se falhou
+  let p=await fh.queryPermission({mode:'readwrite'});
+  if(p!=='granted')p=await fh.requestPermission({mode:'readwrite'});
+  if(p!=='granted')throw new Error('perm');
+  const file=await fh.getFile();
+  const txt=await file.text();
+  const norm=x=>x.replace(/"/g,'').trim();
+  const target=norm(rowOf(l));
+  const lines=txt.split(/\r?\n/);
+  const i=lines.findIndex(x=>norm(x)===target);
+  if(i<0)return 'nf';
+  lines.splice(i,1);
+  const w=await fh.createWritable();
+  await w.write('\ufeff'+lines.join('\r\n'));
+  await w.close();
+  return 'ok';
+}
+
+$('btn').onclick=toggle;
+$('link').onclick=linkFile;
+if(!FS)$('link').style.display='none';
+$('act').addEventListener('keydown',e=>{if(e.key==='Enter')toggle()});
+$('exp').onclick=exportCsv;
+$('tabs').onclick=e=>{
+  const b=e.target.closest('button');if(!b)return;
+  period=+b.dataset.p;
+  [...$('tabs').children].forEach(x=>x.classList.toggle('on',x===b));
+  renderStats();
+};
+$('log').onclick=async e=>{
+  const b=e.target.closest('[data-del]');if(!b)return;
+  if(!confirm('Excluir este registro?'))return;
+  const l=log.find(x=>String(x.id)===b.dataset.del);
+  if(!l)return;
+  let note='';
+  if(fh&&l.synced){
+    try{
+      const r=await removeFromFile(l);
+      note=r==='ok'?'Registro apagado do app e do CSV.':'Apagado do app, mas não achei a linha no CSV (foi editada?). Remova-a manualmente.';
+    }catch(err){
+      say('Não consegui alterar o CSV (está aberto no Excel?). Nada foi apagado.');
+      return;
+    }
+  }
+  log=log.filter(x=>x.id!==l.id);save();render();
+  if(note)say(note);
+};
+load();render();updFile();
+if(FS)hGet().then(h=>{if(h){fh=h;updFile()}}).catch(()=>{});
+</script>
+</body>
+</html>
