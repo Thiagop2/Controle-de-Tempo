@@ -1,3 +1,4 @@
+![Tela do Controle de Tempo](imagens/tela-principal.png)
 # Controle de Tempo
 
 Programa simples para medir quanto tempo você gasta em cada atividade. Você inicia o cronômetro, faz a atividade e, ao parar, o registro é salvo em uma planilha CSV no seu computador. O programa também mostra indicadores para você analisar o seu tempo.
